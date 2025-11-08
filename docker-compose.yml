@@ -1,0 +1,47 @@
+version: '3.8'
+
+services:
+  # PostgreSQL Database
+  postgres:
+    image: postgres:16-alpine
+    container_name: cycle_tracker_db
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-cycle_tracker_db}
+      POSTGRES_USER: ${POSTGRES_USER:-cycle_tracker_user}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-cycle_tracker_password}
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./docker/postgres/init.sql:/docker-entrypoint-initdb.d/init.sql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-cycle_tracker_user}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Django Application (optional - for development)
+  web:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: cycle_tracker_app
+    command: python manage.py runserver 0.0.0.0:8000
+    volumes:
+      - .:/app
+    ports:
+      - "8000:8000"
+    environment:
+      - DEBUG=${DEBUG:-True}
+      - POSTGRES_HOST=postgres
+      - POSTGRES_DB=${POSTGRES_DB:-cycle_tracker_db}
+      - POSTGRES_USER=${POSTGRES_USER:-cycle_tracker_user}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-cycle_tracker_password}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    profiles:
+      - full  # Only start with --profile full
+
+volumes:
+  postgres_data:

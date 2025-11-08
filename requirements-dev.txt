@@ -1,0 +1,23 @@
+# Include base requirements
+-r requirements.txt
+
+# Testing
+pytest==7.4.4
+pytest-django==4.7.0
+pytest-cov==4.1.0
+factory-boy==3.3.0
+
+# Code quality
+black==24.1.1
+flake8==7.0.0
+isort==5.13.2
+pylint==3.0.3
+mypy==1.8.0
+
+# Debugging
+ipython==8.20.0
+django-debug-toolbar==4.3.0
+django-extensions==3.2.3
+
+# Documentation
+Sphinx==7.2.6
