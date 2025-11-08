@@ -9,7 +9,7 @@ from . import views
 app_name = 'cycles'
 
 router = DefaultRouter()
-router.register(r'', CycleViewSet, basename='cycle')
+router.register(r'', views.CycleViewSet, basename='cycle')
 router.register(r'logs', views.DailyLogViewSet, basename='daily-log')
 
 urlpatterns = [
