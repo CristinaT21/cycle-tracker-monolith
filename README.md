@@ -594,16 +594,10 @@ Guidelines for contributing to the project:
 5. Follow code style guidelines
 6. Update README for significant changes
 
-## License
-
-[Specify your license here]
-
 ## Support
 
 For issues and questions:
-- GitHub Issues: [Your repo URL]
-- Email: [Your email]
-- Documentation: [Your docs URL]
+- Email: cristina.tarna@isa.utm.md
 
 ---
 
