@@ -8,14 +8,20 @@ from . import views
 
 app_name = 'cycles'
 
-router = DefaultRouter()
-router.register(r'', views.CycleViewSet, basename='cycle')
-router.register(r'logs', views.DailyLogViewSet, basename='daily-log')
+# Create separate routers to avoid URL conflicts
+cycle_router = DefaultRouter()
+cycle_router.register(r'', views.CycleViewSet, basename='cycle')
+
+log_router = DefaultRouter()
+log_router.register(r'', views.DailyLogViewSet, basename='daily-log')
 
 urlpatterns = [
     # Symptoms endpoint
     path('symptoms/', views.list_symptoms, name='symptoms'),
 
-    # Router URLs
-    path('', include(router.urls)),
+    # Daily logs endpoints (separate path to avoid conflict)
+    path('logs/', include(log_router.urls)),
+
+    # Cycle endpoints at root
+    path('', include(cycle_router.urls)),
 ]
