@@ -28,25 +28,31 @@ class PredictionService:
         Returns:
             CyclePrediction object or None if insufficient data
         """
-        # Get completed cycles
-        completed_cycles = Cycle.objects.filter(
-            user=self.user,
-            end_date__isnull=False
-        ).order_by('-start_date')[:6]
+        # Get all cycles ordered by start date (oldest to newest)
+        all_cycles = list(Cycle.objects.filter(
+            user=self.user
+        ).order_by('start_date'))
 
-        if completed_cycles.count() < self.min_cycles:
+        if len(all_cycles) < self.min_cycles:
             return None
 
-        # Calculate average cycle length
-        cycle_lengths = [c.cycle_length for c in completed_cycles if c.cycle_length]
+        # Calculate actual cycle lengths by comparing consecutive start dates
+        cycle_lengths = []
+        for i in range(len(all_cycles) - 1):
+            current_cycle = all_cycles[i]
+            next_cycle = all_cycles[i + 1]
+            # Cycle length is from start of this cycle to start of next cycle
+            length = (next_cycle.start_date - current_cycle.start_date).days
+            cycle_lengths.append(length)
+
         if not cycle_lengths:
             return None
 
         avg_cycle_length = sum(cycle_lengths) / len(cycle_lengths)
-        avg_period_length = self._calculate_average_period_length(completed_cycles)
+        avg_period_length = self._calculate_average_period_length(all_cycles)
 
-        # Get last cycle start date
-        last_cycle = completed_cycles.first()
+        # Get last (most recent) cycle start date
+        last_cycle = all_cycles[-1]  # Last item in ordered list
         predicted_start = last_cycle.start_date + timedelta(days=int(avg_cycle_length))
         predicted_end = predicted_start + timedelta(days=int(avg_period_length) - 1)
 
@@ -116,30 +122,42 @@ class StatisticsService:
         """
         Calculate or update cycle statistics for the user.
         """
-        cycles = Cycle.objects.filter(user=self.user)
-        completed_cycles = cycles.filter(end_date__isnull=False)
+        # Get all cycles ordered by start date
+        all_cycles = list(Cycle.objects.filter(user=self.user).order_by('start_date'))
 
         # Get or create statistics object
         stats, _ = CycleStatistics.objects.get_or_create(user=self.user)
 
-        # Calculate cycle statistics
-        if completed_cycles.exists():
-            cycle_lengths = [c.cycle_length for c in completed_cycles if c.cycle_length]
+        # Calculate actual cycle lengths from consecutive start dates
+        if len(all_cycles) >= 2:
+            cycle_lengths = []
+            for i in range(len(all_cycles) - 1):
+                current_cycle = all_cycles[i]
+                next_cycle = all_cycles[i + 1]
+                length = (next_cycle.start_date - current_cycle.start_date).days
+                cycle_lengths.append(length)
+
             if cycle_lengths:
                 stats.average_cycle_length = Decimal(str(round(sum(cycle_lengths) / len(cycle_lengths), 2)))
                 stats.shortest_cycle_length = min(cycle_lengths)
                 stats.longest_cycle_length = max(cycle_lengths)
                 stats.cycle_regularity_score = self._calculate_regularity_score(cycle_lengths)
 
-            # Calculate period statistics
-            period_lengths = [c.period_length for c in completed_cycles if c.period_length]
+            # Calculate period statistics from end_date (which represents period end)
+            # Period length = days from start to end of period
+            period_lengths = []
+            for cycle in all_cycles:
+                if cycle.end_date:
+                    period_len = (cycle.end_date - cycle.start_date).days + 1
+                    period_lengths.append(period_len)
+
             if period_lengths:
                 stats.average_period_length = Decimal(str(round(sum(period_lengths) / len(period_lengths), 2)))
                 stats.shortest_period_length = min(period_lengths)
                 stats.longest_period_length = max(period_lengths)
 
-        stats.total_cycles_tracked = cycles.count()
-        stats.complete_cycles_count = completed_cycles.count()
+        stats.total_cycles_tracked = len(all_cycles)
+        stats.complete_cycles_count = sum(1 for c in all_cycles if c.end_date)
         stats.save()
 
         return stats
